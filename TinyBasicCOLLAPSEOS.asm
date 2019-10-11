@@ -1615,9 +1615,9 @@ CI1:
         JP RSTART                       ;YES, RESTART TBI
 
 
-MSG1:   .db   ESC,'[','2','J',ESC,[','H'                 ;SCREEN CLEAR
-        .db   'Z','8','0',' ','T','I','N','Y',' ','B','A','S','I','C',' ','2','.','0','g',CR           ;BOOT MESSAGE
-MSG2:   .db   'P','O','R','T','E','D',' ','B','Y',' ','A','G','U','S','T','I','N',' ','G','I','M','E','N','E','Z',',',' ','2','0','1','9',CR
+MSG1:   .db   ESC,"[2J",ESC,"[H"                 ;SCREEN CLEAR
+        .db   "Z80 TINY BASIC 2.0g",CR           ;BOOT MESSAGE
+MSG2:   .db   "PORTED BY AGUSTIN GIMENEZ, 2019",CR
 
 ;*************************************************************
 ;
