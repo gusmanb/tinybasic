@@ -205,7 +205,7 @@ TN1:
         RET C                           ;B AND HL
         CP 0x3A                         ;IF NUMBERS, CONVERT
         RET NC                          ;TO BINARY IN HL AND
-        LD A,0x0F0                      ;SET B TO # OF DIGITS
+        LD A,0xF0                       ;SET B TO # OF DIGITS
         AND H                           ;IF H>255, THERE IS NO
         JR NZ,QHOW                      ;ROOM FOR NEXT DIGIT
         INC B                           ;B COUNTS # OF DIGITS
