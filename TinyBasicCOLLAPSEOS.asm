@@ -105,7 +105,7 @@
 ;        DB   WHERE & 0FFH
 ;        ENDM
 
-        .ORG  0x0000
+        .org  0x4000
 
 START:
         LD SP,STACK                     ;*** COLD START ***
@@ -239,12 +239,6 @@ HOW:    .db 'H','O','W','?',CR
 OK:     .db 'O','K',CR
 WHAT:   .db 'W','H','A','T','?',CR
 SORRY:  .db 'S','O','R','R','Y',CR
-
-
-;---------------HERE, CHANGING HEX SPECIFIERS
-
-
-
 
 ;*************************************************************
 ;
@@ -1653,50 +1647,50 @@ MSG2:   .db   'P','O','R','T','E','D',' ','B','Y',' ','A','G','U','S','T','I','N
 ;*************************************************************
 
 TAB1:                                   ;DIRECT COMMANDS
-        .db 'LIST'
+        .db 'L','I','S','T'
         .dw _LIST + 0x8000
-        .db 'RUN'
+        .db 'R','U','N'
         .dw RUN + 0x8000
-        .db 'NEW'
+        .db 'N','E','W'
         .dw NEW + 0x8000
 TAB2:                                   ;DIRECT/STATEMENT
-        .db 'NEXT'
+        .db 'N','E','X','T'
         .dw NEXT + 0x8000
-        .db 'LET'
+        .db 'L','E','T'
         .dw LET + 0x8000
-        .db 'IF'
+        .db 'I','F'
         .dw IFF + 0x8000
-        .db 'GOTO'
+        .db 'G','O','T','O'
         .dw GOTO + 0x8000
-        .db 'GOSUB'
+        .db 'G','O','S','U','B'
         .dw GOSUB + 0x8000
-        .db 'RETURN'
+        .db 'R','E','T','U','R','N'
         .dw RETURN + 0x8000
-        .db 'REM'
+        .db 'R','E','M'
         .dw REM + 0x8000
-        .db 'FOR'
+        .db 'F','O','R'
         .dw FOR + 0x8000
-        .db 'INPUT'
+        .db 'I','N','P','U','T'
         .dw INPUT + 0x8000
-        .db 'PRINT'
+        .db 'P','R','I','N','T'
         .dw _PRINT + 0x8000
-        .db 'STOP'
+        .db 'S','T','O','P'
         .dw STOP + 0x8000
         .dw DEFLT + 0x8000               ;A bit confused about this, need to test, not sure if ZASM workaround is applied correctly
 TAB4:                                   ;FUNCTIONS
-        .db 'RND'
+        .db 'R','N','D'
         .dw RND + 0x8000
-        .db 'ABS'
+        .db 'A','B','S'
         .dw ABS + 0x8000
-        .db 'SIZE'
+        .db 'S','I','Z','E'
         .dw SIZE + 0x8000
         .dw XP40 + 0x8000               ;A bit confused about this, need to test, not sure if ZASM workaround is applied correctly
 TAB5:                                   ;"TO" IN "FOR"
-        .db 'TO'
+        .db 'T','O'
         .dw FR1 + 0x8000
         .dw QWHAT + 0x8000              ;A bit confused about this, need to test, not sure if ZASM workaround is applied correctly
 TAB6:                                   ;"STEP" IN "FOR"
-        .db 'STEP'
+        .db 'S','T','E','P'
         .dw FR2 + 0x8000
         .dw FR3 + 0x8000                ;A bit confused about this, need to test, not sure if ZASM workaround is applied correctly
 TAB8:                                   ;RELATION OPERATORS
@@ -1777,7 +1771,6 @@ SERIAL_INIT:
 
         ; This routine is for initializing your serial port.
         
-        
                 
         RET
 ;-------------------------------------------------------------------------------
@@ -1807,8 +1800,9 @@ RX_RDY:
 
 LSTROM:                                 ;ALL ABOVE CAN BE ROM
                                         ;HERE DOWN MUST BE RAM
-        ORG  0x08000
-        ORG  0x0FF00
+        .org  0x08000
+        .org  0x0FF00
+
 VARBGN: .fill   55                         ;VARIABLE @(0)
 BUFFER: .fill   64                         ;INPUT BUFFER
 BUFEND: .fill   1                          ;BUFFER ENDS
