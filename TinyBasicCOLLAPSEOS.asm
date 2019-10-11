@@ -1694,7 +1694,7 @@ TAB6:                                   ;"STEP" IN "FOR"
         .dw FR2 + 0x8000
         .dw FR3 + 0x8000                ;A bit confused about this, need to test, not sure if ZASM workaround is applied correctly
 TAB8:                                   ;RELATION OPERATORS
-        .db '>='
+        .db '>','='
         .dw XP11 + 0x8000
         .db '#'
         .dw XP12 + 0x8000
@@ -1702,7 +1702,7 @@ TAB8:                                   ;RELATION OPERATORS
         .dw XP13 + 0x8000
         .db '='
         .dw XP15 + 0x8000
-        .db '<='
+        .db '<','='
         .dw XP14 + 0x8000
         .db '<'
         .dw XP16 + 0x8000
