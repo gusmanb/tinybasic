@@ -235,10 +235,10 @@ AHOW:
         JP ERROR_ROUTINE
 
 
-HOW:    .db 'H','O','W','?',CR
-OK:     .db 'O','K',CR
-WHAT:   .db 'W','H','A','T','?',CR
-SORRY:  .db 'S','O','R','R','Y',CR
+HOW:    .db "HOW?",CR
+OK:     .db "OK",CR
+WHAT:   .db "WHAT?",CR
+SORRY:  .db "SORRY",CR
 
 ;*************************************************************
 ;
@@ -1647,54 +1647,54 @@ MSG2:   .db   'P','O','R','T','E','D',' ','B','Y',' ','A','G','U','S','T','I','N
 ;*************************************************************
 
 TAB1:                                   ;DIRECT COMMANDS
-        .db 'L','I','S','T'
+        .db "LIST"
         .dw _LIST + 0x8000
-        .db 'R','U','N'
+        .db "RUN"
         .dw RUN + 0x8000
-        .db 'N','E','W'
+        .db "NEW"
         .dw NEW + 0x8000
 TAB2:                                   ;DIRECT/STATEMENT
-        .db 'N','E','X','T'
+        .db "NEXT"
         .dw NEXT + 0x8000
-        .db 'L','E','T'
+        .db "LET"
         .dw LET + 0x8000
-        .db 'I','F'
+        .db "IF"
         .dw IFF + 0x8000
-        .db 'G','O','T','O'
+        .db "GOTO"
         .dw GOTO + 0x8000
-        .db 'G','O','S','U','B'
+        .db "GOSUB"
         .dw GOSUB + 0x8000
-        .db 'R','E','T','U','R','N'
+        .db "RETURN"
         .dw RETURN + 0x8000
-        .db 'R','E','M'
+        .db "REM"
         .dw REM + 0x8000
-        .db 'F','O','R'
+        .db "FOR"
         .dw FOR + 0x8000
-        .db 'I','N','P','U','T'
+        .db "INPUT"
         .dw INPUT + 0x8000
-        .db 'P','R','I','N','T'
+        .db "PRINT"
         .dw _PRINT + 0x8000
-        .db 'S','T','O','P'
+        .db "STOP"
         .dw STOP + 0x8000
         .dw DEFLT + 0x8000               ;A bit confused about this, need to test, not sure if ZASM workaround is applied correctly
 TAB4:                                   ;FUNCTIONS
-        .db 'R','N','D'
+        .db "RND"
         .dw RND + 0x8000
-        .db 'A','B','S'
+        .db "ABS"
         .dw ABS + 0x8000
-        .db 'S','I','Z','E'
+        .db "SIZE"
         .dw SIZE + 0x8000
         .dw XP40 + 0x8000               ;A bit confused about this, need to test, not sure if ZASM workaround is applied correctly
 TAB5:                                   ;"TO" IN "FOR"
-        .db 'T','O'
+        .db "TO"
         .dw FR1 + 0x8000
         .dw QWHAT + 0x8000              ;A bit confused about this, need to test, not sure if ZASM workaround is applied correctly
 TAB6:                                   ;"STEP" IN "FOR"
-        .db 'S','T','E','P'
+        .db "STEP"
         .dw FR2 + 0x8000
         .dw FR3 + 0x8000                ;A bit confused about this, need to test, not sure if ZASM workaround is applied correctly
 TAB8:                                   ;RELATION OPERATORS
-        .db '>','='
+        .db ">=""
         .dw XP11 + 0x8000
         .db '#'
         .dw XP12 + 0x8000
@@ -1702,7 +1702,7 @@ TAB8:                                   ;RELATION OPERATORS
         .dw XP13 + 0x8000
         .db '='
         .dw XP15 + 0x8000
-        .db '<','='
+        .db "<="
         .dw XP14 + 0x8000
         .db '<'
         .dw XP16 + 0x8000
