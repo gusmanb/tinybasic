@@ -48,50 +48,39 @@
 ;
 ;*************************************************************
 
-SerialPort              EQU     C0H             ;This is for your I/0
-UZI_CONTROL     EQU CFh
-UZI_UART                EQU 00000001b
-UART_CONTROL    EQU C3h
-BRG_L                   EQU C0h
-BRG_H                   EQU C1h
-BRG_DIVIDER     EQU 435
-UART_CONFIG     EQU 00000011b
-UART_INT                EQU     C1h
-UART_STATUS             EQU     C5h
 
+.equ    _SPACE          0x020            ; Space
+.equ    TAB             0x09             ; HORIZONTAL TAB
+.equ    CTRLC           0x03             ; Control "C"
+.equ    CTRLG           0x07             ; Control "G"
+.equ    BKSP            0x08             ; Back space
+.equ    LF              0x0A             ; Line feed
+.equ    CS              0x0C             ; Clear screen
+.equ    CR              0x0D             ; Carriage return
+.equ    CTRLO           0x0F             ; Control "O"
+.equ    CTRLQ           0x011            ; Control "Q"
+.equ    CTRLR           0x012            ; Control "R"
+.equ    CTRLS           0x013            ; Control "S"
+.equ    CTRLU           0x015            ; Control "U"
+.equ    ESC             0x01B            ; Escape
+.equ    DEL             0x07F            ; Delete
 
-_SPACE          EQU     020H            ; Space
-TAB             EQU     09H             ; HORIZONTAL TAB
-CTRLC           EQU     03H             ; Control "C"
-CTRLG           EQU     07H             ; Control "G"
-BKSP            EQU     08H             ; Back space
-LF              EQU     0AH             ; Line feed
-CS              EQU     0CH             ; Clear screen
-CR              EQU     0DH             ; Carriage return
-CTRLO           EQU     0FH             ; Control "O"
-CTRLQ           EQU     011H            ; Control "Q"
-CTRLR           EQU     012H            ; Control "R"
-CTRLS           EQU     013H            ; Control "S"
-CTRLU           EQU     015H            ; Control "U"
-ESC             EQU     01BH            ; Escape
-DEL             EQU     07FH            ; Delete
+.equ    STACK           0x0FFFF          ; STACK
+.equ    OCSW            0x08000          ;SWITCH FOR OUTPUT
+.equ    CURRNT          OCSW+1          ;POINTS FOR OUTPUT
+.equ    STKGOS          OCSW+3          ;SAVES SP IN 'GOSUB'
+.equ    VARNXT          OCSW+5          ;TEMP STORAGE
+.equ    STKINP          OCSW+7          ;SAVES SP IN 'INPUT'
+.equ    LOPVAR          OCSW+9          ;'FOR' LOOP SAVE AREA
+.equ    LOPINC          OCSW+11         ;INCREMENT
+.equ    LOPLMT          OCSW+13         ;LIMIT
+.equ    LOPLN           OCSW+15         ;LINE NUMBER
+.equ    LOPPT           OCSW+17         ;TEXT POINTER
+.equ    RANPNT          OCSW+19         ;RANDOM NUMBER POINTER
+.equ    TXTUNF          OCSW+21         ;->UNFILLED TEXT AREA
+.equ    TXTBGN          OCSW+23         ;TEXT SAVE AREA BEGINS
 
-STACK           EQU     0FFFFH          ; STACK
-OCSW            EQU     08000H          ;SWITCH FOR OUTPUT
-CURRNT          EQU     OCSW+1          ;POINTS FOR OUTPUT
-STKGOS          EQU     OCSW+3          ;SAVES SP IN 'GOSUB'
-VARNXT          EQU     OCSW+5          ;TEMP STORAGE
-STKINP          EQU     OCSW+7          ;SAVES SP IN 'INPUT'
-LOPVAR          EQU     OCSW+9          ;'FOR' LOOP SAVE AREA
-LOPINC          EQU     OCSW+11         ;INCREMENT
-LOPLMT          EQU     OCSW+13         ;LIMIT
-LOPLN           EQU     OCSW+15         ;LINE NUMBER
-LOPPT           EQU     OCSW+17         ;TEXT POINTER
-RANPNT          EQU     OCSW+19         ;RANDOM NUMBER POINTER
-TXTUNF          EQU     OCSW+21         ;->UNFILLED TEXT AREA
-TXTBGN          EQU     OCSW+23         ;TEXT SAVE AREA BEGINS
-
-TXTEND          EQU     0FF00H          ;TEXT SAVE AREA ENDS
+.equ    TXTEND          0x0FF00          ;TEXT SAVE AREA ENDS
 
 
 ;*************************************************************
@@ -105,59 +94,61 @@ TXTEND          EQU     0FF00H          ;TEXT SAVE AREA ENDS
 ; SUBROUTINES. TWO OTHER SUBROUTINES (CRLF & TSTNUM) ARE ALSO
 ; IN THIS SECTION. THEY CAN BE REACHED WITH 'CALL'.
 ;*************************************************************
+;
+; IN ORDER TO MAKE THIS CODE RELOCATABLE THE RST FUNCTIONS
+; HAD TO BE CALLED AS REGULAR ROUTINES
+;
+;*************************************************************
 
-DWA     MACRO WHERE
-        DB   (WHERE SHR 8) + 128
-        DB   WHERE & 0FFH
-        ENDM
+;DWA     MACRO WHERE                    ;Workaround applied on command table to avoid macros
+;        DB   (WHERE SHR 8) + 128
+;        DB   WHERE & 0FFH
+;        ENDM
 
-        ORG  0000H
+        .ORG  0x0000
 
 START:
         LD SP,STACK                     ;*** COLD START ***
-        LD A,0FFH
+        LD A,0x0FF
         JP INIT
 
-RST08:  EX (SP),HL                      ;*** TSTC OR RST 08H ***
-        RST 28H                         ;IGNORE BLANKS AND
+RST08:  EX (SP),HL                      ;*** TSTC OR CALL RST08 ***
+        CALL RST28                      ;IGNORE BLANKS AND
         CP (HL)                         ;TEST CHARACTER
         JP TC1                          ;REST OF THIS IS AT TC1
 
 CRLF:
         LD A,CR                         ;*** CRLF ***
 
-RST10:  PUSH AF                         ;*** OUTC OR RST 10H ***
+RST10:  PUSH AF                         ;*** OUTC OR CALL RST10 ***
         LD A,(OCSW)                     ;PRINT CHARACTER ONLY
         OR A                            ;IF OCSW SWITCH IS ON
         JP OUTC                         ;REST OF THIS AT OUTC
 
-RST18:  CALL EXPR2                      ;*** EXPR OR RST 18H ***
+RST18:  CALL EXPR2                      ;*** EXPR OR CALL RST18 ***
         PUSH HL                         ;EVALUATE AN EXPRESSION
         JP EXPR1                        ;REST OF IT AT EXPR1
-        DB 'W'
 
-RST20:  LD A,H                          ;*** COMP OR RST 20H ***
+RST20:  LD A,H                          ;*** COMP OR CALL RST20 ***
         CP D                            ;COMPARE HL WITH DE
         RET NZ                          ;RETURN CORRECT C AND
         LD A,L                          ;Z FLAGS
         CP E                            ;BUT OLD A IS LOST
         RET
-        DB 'AN'
 
 SS1:
-RST28:  LD A,(DE)                       ;*** IGNBLK/RST 28H ***
-        CP 20H                          ;IGNORE BLANKS
+RST28:  LD A,(DE)                       ;*** IGNBLK/CALL RST28 ***
+        CP 0x20                         ;IGNORE BLANKS
         RET NZ                          ;IN TEXT (WHERE DE->)
         INC DE                          ;AND RETURN THE FIRST
         JP SS1                          ;NON-BLANK CHAR. IN A
 
-RST30:  POP AF                          ;*** FINISH/RST 30H ***
+RST30:  POP AF                          ;*** FINISH/CALL RST30 ***
         CALL FIN                        ;CHECK END OF COMMAND
         JP QWHAT                        ;PRINT "WHAT?" IF WRONG
-        DB 'G'
 
-RST38:  RST 28H                         ;*** TSTV OR RST 38H ***
-        SUB 40H                         ;TEST VARIABLES
+RST38:  CALL RST28                      ;*** TSTV OR CALL RST38 ***
+        SUB 0x40                        ;TEST VARIABLES
         RET C                           ;C:NOT A VARIABLE
         JR NZ,TV1                       ;NOT "@" ARRAY
         INC DE                          ;IT IS THE "@" ARRAY
@@ -167,7 +158,7 @@ RST38:  RST 28H                         ;*** TSTV OR RST 38H ***
         PUSH DE                         ;WILL IT OVERWRITE
         EX DE,HL                        ;TEXT?
         CALL SIZE                       ;FIND SIZE OF FREE
-        RST 20H                         ;AND CHECK THAT
+        CALL RST20                        ;AND CHECK THAT
         JP C,ASORRY                     ;IF SO, SAY "SORRY"
         LD HL,VARBGN                    ;IF NOT GET ADDRESS
         CALL SUBDE                      ;OF @(EXPR) AND PUT IT
@@ -175,7 +166,7 @@ RST38:  RST 28H                         ;*** TSTV OR RST 38H ***
         RET                             ;C FLAG IS CLEARED
 
 TV1:
-        CP 1BH                          ;NOT @, IS IT A TO Z?
+        CP 0x1B                         ;NOT @, IS IT A TO Z?
         CCF                             ;IF NOT RETURN C FLAG
         RET C
         INC DE                          ;IF A THROUGH Z
@@ -183,7 +174,7 @@ TV1:
         RLCA                            ;THAT VARIABLE
         ADD A,L                         ;AND RETURN IT IN HL
         LD L,A                          ;WITH C FLAG CLEARED
-        LD A,00H
+        LD A,0x00
         ADC A,H
         LD H,A
         RET
@@ -193,7 +184,7 @@ TC1:
         JR Z,TC2                        ;FOLLOWS THE RST INST.
         PUSH BC                         ;WITH THE TEXT (DE->)
         LD C,(HL)                       ;IF NOT =, ADD THE 2ND
-        LD B,00H                        ;BYTE THAT FOLLOWS THE
+        LD B,0x00                       ;BYTE THAT FOLLOWS THE
         ADD HL,BC                       ;RST TO THE OLD PC
         POP BC                          ;I.E., DO A RELATIVE
         DEC DE                          ;JUMP IF NOT =
@@ -205,16 +196,16 @@ TC2:
         RET
 
 TSTNUM:
-        LD HL,0000H                     ;*** TSTNUM ***
+        LD HL,0x0000                    ;*** TSTNUM ***
         LD B,H                          ;TEST IF THE TEXT IS
-        RST 28H                         ;A NUMBER
+        CALL RST28                        ;A NUMBER
 
 TN1:
-        CP 30H                          ;IF NOT, RETURN 0 IN
+        CP 0x30                         ;IF NOT, RETURN 0 IN
         RET C                           ;B AND HL
-        CP 3AH                          ;IF NUMBERS, CONVERT
+        CP 0x3A                         ;IF NUMBERS, CONVERT
         RET NC                          ;TO BINARY IN HL AND
-        LD A,0F0H                       ;SET B TO # OF DIGITS
+        LD A,0x0F0                      ;SET B TO # OF DIGITS
         AND H                           ;IF H>255, THERE IS NO
         JR NZ,QHOW                      ;ROOM FOR NEXT DIGIT
         INC B                           ;B COUNTS # OF DIGITS
@@ -227,10 +218,10 @@ TN1:
         ADD HL,HL
         LD A,(DE)                       ;AND (DIGIT) IS FROM
         INC DE                          ;STRIPPING THE ASCII
-        AND 0FH                         ;CODE
+        AND 0x0F                        ;CODE
         ADD A,L
         LD L,A
-        LD A,00H
+        LD A,0x00
         ADC A,H
         LD H,A
         POP BC
@@ -244,10 +235,16 @@ AHOW:
         JP ERROR_ROUTINE
 
 
-HOW:    DB "HOW?",CR
-OK:     DB "OK",CR
-WHAT:   DB "WHAT?",CR
-SORRY:  DB "SORRY",CR
+HOW:    .db 'H','O','W','?',CR
+OK:     .db 'O','K',CR
+WHAT:   .db 'W','H','A','T','?',CR
+SORRY:  .db 'S','O','R','R','Y',CR
+
+
+;---------------HERE, CHANGING HEX SPECIFIERS
+
+
+
 
 ;*************************************************************
 ;
@@ -294,7 +291,7 @@ ST1:
         LD (CURRNT),HL                  ;CURRENT->LINE # = 0
 
 ST2:
-        LD HL,0000H
+        LD HL,0x0000
         LD (LOPVAR),HL
         LD (STKGOS),HL
 
@@ -304,7 +301,7 @@ ST3:
         PUSH DE                         ;DE->END OF LINE
         LD DE,BUFFER                    ;DE->BEGINNING OF LINE
         CALL TSTNUM                     ;TEST IF IT IS A NUMBER
-        RST 28H
+        CALL RST28
         LD A,H                          ;HL=VALUE OF THE # OR
         OR L                            ;0 IF NO # WAS FOUND
         POP BC                          ;BC->END OF LINE
@@ -339,15 +336,15 @@ ST4:
         LD HL,(TXTUNF)                  ;BUT FIRST CHECK IF
         POP AF                          ;THE LENGTH OF NEW LINE
         PUSH HL                         ;IS 3 (LINE # AND CR)
-        CP 03H                          ;THEN DO NOT INSERT
+        CP 0x03                          ;THEN DO NOT INSERT
         JR Z,RSTART                     ;MUST CLEAR THE STACK
         ADD A,L                         ;COMPUTE NEW TXTUNF
         LD L,A
-        LD A,00H
+        LD A,0x00
         ADC A,H
         LD H,A                          ;HL->NEW UNFILLED AREA
         LD DE,TXTEND                    ;CHECK TO SEE IF THERE
-        RST 20H                         ;IS ENOUGH SPACE
+        CALL RST20                         ;IS ENOUGH SPACE
         JP NC,QSORRY                    ;SORRY, NO ROOM FOR IT
         LD (TXTUNF),HL                  ;OK, UPDATE TXTUNF
         POP DE                          ;DE->OLD UNFILLED AREA
@@ -404,7 +401,7 @@ RUN:
         CALL ENDCHK                     ;*** RUN(CR) ***
         LD DE,TXTBGN                    ;FIRST SAVED LINE
 RUNNXL:
-        LD HL,00H                       ;*** RUNNXL ***
+        LD HL,0x00                       ;*** RUNNXL ***
         CALL FNDLP                      ;FIND WHATEVER LINE #
         JP C,RSTART                     ;C:PASSED TXTUNF, QUIT
 RUNTSL:
@@ -418,7 +415,7 @@ RUNSML:
         LD HL,TAB2-1                    ;FIND COMMAND IN TAB2
         JP EXEC                         ;AND EXECUTE IT
 GOTO:
-        RST 18H                         ;*** GOTO EXPR ***
+        CALL RST18                         ;*** GOTO EXPR ***
         PUSH DE                         ;SAVE FOR ERROR ROUTINE
         CALL ENDCHK                     ;MUST FIND A CR
         CALL FNDLN                      ;FIND THE TARGET LINE
@@ -466,39 +463,39 @@ LS1:
         CALL FNDLP                      ;FIND NEXT LINE
         JR LS1                          ;AND LOOP BACK
 _PRINT:
-        LD C,06H                        ;C = # OF SPACES
-        RST 08H                         ;F NULL LIST & ";"
-        DB 3BH
-        DB PR2-$-1
+        LD C, 0x06                        ;C = # OF SPACES
+        CALL RST08                         ;F NULL LIST & ";"
+        .db 0x3B
+        .db PR2-$-1
         CALL CRLF                       ;GIVE CR-LF AND
         JR RUNSML                       ;CONTINUE SAME LINE
 PR2:
-        RST 08H                         ;IF NULL LIST (CR)
-        DB CR
-        DB PR0-$-1
+        CALL RST08                         ;IF NULL LIST (CR)
+        .db CR
+        .db PR0-$-1
         CALL CRLF                       ;ALSO GIVE CR-LF AND
         JR RUNNXL                       ;GO TO NEXT LINE
 PR0:
-        RST 08H                         ;ELSE IS IT FORMAT?
-        DB '#'
-        DB PR1-$-1
-        RST 18H                         ;YES, EVALUATE EXPR.
+        CALL RST08                         ;ELSE IS IT FORMAT?
+        .db '#'
+        .db PR1-$-1
+        CALL RST18                         ;YES, EVALUATE EXPR.
         LD C,L                          ;AND SAVE IT IN C
         JR PR3                          ;LOOK FOR MORE TO PRINT
 PR1:
         CALL QTSTG                      ;OR IS IT A STRING?
         JR PR8                          ;IF NOT, MUST BE EXPR.
 PR3:
-        RST 08H                         ;IF ",", GO FIND NEXT
-        DB ','
-        DB PR6-$-1
+        CALL RST08                         ;IF ",", GO FIND NEXT
+        .db ','
+        .db PR6-$-1
         CALL FIN                        ;IN THE LIST.
         JR PR0                          ;LIST CONTINUES
 PR6:
         CALL CRLF                       ;LIST ENDS
-        RST 30H
+        CALL RST30
 PR8:
-        RST 18H                         ;EVALUATE THE EXPR
+        CALL RST18                         ;EVALUATE THE EXPR
         PUSH BC
         CALL PRTNUM                     ;PRINT THE VALUE
         POP BC
@@ -526,7 +523,7 @@ PR8:
 
 GOSUB:
         CALL PUSHA                      ;SAVE THE CURRENT "FOR"
-        RST 18H                         ;PARAMETERS
+        CALL RST18                         ;PARAMETERS
         PUSH DE                         ;AND TEXT POINTER
         CALL FNDLN                      ;FIND THE TARGET LINE
         JP NZ,AHOW                      ;NOT THERE. SAY "HOW?"
@@ -534,7 +531,7 @@ GOSUB:
         PUSH HL                         ;'CURRNT' OLD 'STKGOS'
         LD HL,(STKGOS)
         PUSH HL
-        LD HL,0000H                     ;AND LOAD NEW ONES
+        LD HL, 0x0000                     ;AND LOAD NEW ONES
         LD (LOPVAR),HL
         ADD HL,SP
         LD (STKGOS),HL
@@ -552,7 +549,7 @@ RETURN:
         LD (CURRNT),HL                  ;AND THE OLD 'CURRNT'
         POP DE                          ;OLD TEXT POINTER
         CALL POPA                       ;OLD "FOR" PARAMETERS
-        RST 30H                         ;AND WE ARE BACK HOME
+        CALL RST30                         ;AND WE ARE BACK HOME
 
 ;*************************************************************
 ;
@@ -594,15 +591,15 @@ FOR:
         LD HL,TAB5-1                    ;USE 'EXEC' TO LOOK
         JP EXEC                         ;FOR THE WORK 'TO'
 FR1:
-        RST 18H                         ;EVALUATE THE LIMITE
+        CALL RST18                         ;EVALUATE THE LIMITE
         LD (LOPLMT),HL                  ;SAVE THAT
         LD HL,TAB6-1                    ;USE 'EXEC' TO LOOK
         JP EXEC                         ;FOR THE WORD 'STEP'
 FR2:
-        RST 18H                         ;FOUND IT, GET STEP
+        CALL RST18                         ;FOUND IT, GET STEP
         JR FR4
 FR3:
-        LD HL,0001H                     ;NOT FOUND, SET TO 1
+        LD HL, 0x0001                     ;NOT FOUND, SET TO 1
 FR4:
         LD (LOPINC),HL                  ;SAVE THAT TOO
 FR5:
@@ -610,13 +607,13 @@ FR5:
         LD (LOPLN),HL
         EX DE,HL                        ;AND TEXT POINTER
         LD (LOPPT),HL
-        LD BC,0AH                       ;DIG INTO STACK TO
+        LD BC, 0x0A                       ;DIG INTO STACK TO
         LD HL,(LOPVAR)                  ;FIND 'LOPVAR'
         EX DE,HL
         LD H,B
         LD L,B                          ;HL=0 NOW
         ADD HL,SP                       ;HERE IS THE STACK
-        DB 3EH                          ;DISASSEMBLY SAID "ld a,09h"
+        .db 0x3E                         ;DISASSEMBLY SAID "ld a,09h"
 FR7:
         ADD HL,BC                       ;EACH LEVEL IS 10 DEEP - DIS = 09
         LD A,(HL)                       ;GET THAT OLD 'LOPVAR'
@@ -631,21 +628,21 @@ FR7:
         CP E
         JR NZ,FR7
         EX DE,HL                        ;YES, FOUND ONE
-        LD HL,0000H
+        LD HL, 0x0000
         ADD HL,SP                       ;TRY TO MOVE SP
         LD B,H
         LD C,L
-        LD HL,000AH
+        LD HL, 0x000A
         ADD HL,DE
         CALL MVDOWN                     ;AND PURGE 10 WORDS
         LD SP,HL                        ;IN THE STACK
 FR8:
         LD HL,(LOPPT)                   ;JOB DONE, RESTORE DE
         EX DE,HL
-        RST 30H                         ;AND CONTINUE
+        CALL RST30                         ;AND CONTINUE
 ;
 NEXT:
-        RST 38H                         ;GET ADDRESS OF VAR.
+        CALL RST38                         ;GET ADDRESS OF VAR.
         JP C,QWHAT                      ;NO VARIABLE, "WHAT?"
         LD (VARNXT),HL                  ;YES, SAVE IT
 NX0:
@@ -655,7 +652,7 @@ NX0:
         LD A,H
         OR L                            ;0 SAYS NEVER HAD ONE
         JP Z,AWHAT                      ;SO WE ASK: "WHAT?"
-        RST 20H                         ;ELSE WE CHECK THEM
+        CALL RST20                         ;ELSE WE CHECK THEM
         JR Z,NX3                        ;OK, THEY AGREE
         POP DE                          ;NO, LET'S SEE
         CALL POPA                       ;PURGE CURRENT LOOP
@@ -693,13 +690,13 @@ NX1:
         LD (CURRNT),HL                  ;BACK TO THE SAVED
         LD HL,(LOPPT)                   ;'CURRNT' AND TEXT
         EX DE,HL                        ;POINTER
-        RST 30H
+        CALL RST30
 NX5:
         POP HL
         POP DE
 NX2:
         CALL POPA                       ;PURGE THIS LOOP
-        RST 30H
+        CALL RST30
 
 ;*************************************************************
 ;
@@ -739,10 +736,10 @@ NX2:
 ;*************************************************************
 
 REM:
-        LD HL,0000H                     ;*** REM ***
-        DB 3EH                          ;THIS IS LIKE 'IF 0'
+        LD HL, 0x0000                     ;*** REM ***
+        .db 0x3E                          ;THIS IS LIKE 'IF 0'
 IFF:
-        RST 18H                         ;*** IF ***
+        CALL RST18                         ;*** IF ***
         LD A,H                          ;IS THE EXPR.=0?
         OR L
         JP NZ,RUNSML                    ;NO, CONTINUE
@@ -761,12 +758,12 @@ IP1:
         PUSH DE                         ;SAVE IN CASE OF ERROR
         CALL QTSTG                      ;IS NEXT ITEM A STRING?
         JR IP2                          ;NO
-        RST 38H                         ;YES, BUT FOLLOWED BY A
+        CALL RST38                         ;YES, BUT FOLLOWED BY A
         JR C,IP4                        ;VARIABLE? NO.
         JR IP3                          ;YES. INPUT VARIABLE
 IP2:
         PUSH DE                         ;SAVE FOR 'PRTSTG'
-        RST 38H                         ;MUST BE VARIABLE NOW
+        CALL RST38                         ;MUST BE VARIABLE NOW
         JP C,QWHAT                      ;"WHAT?" IT IS NOT?
         LD A,(DE)                       ;GET READY FOR 'PRTSTR'
         LD C,A
@@ -784,14 +781,14 @@ IP3:
         PUSH HL
         LD HL,IP1                       ;A NEGATIVE NUMBER
         LD (CURRNT),HL                  ;AS A FLAG
-        LD HL,0000H                     ;SAVE SP TOO
+        LD HL, 0x0000                     ;SAVE SP TOO
         ADD HL,SP
         LD (STKINP),HL
         PUSH DE                         ;OLD HL
-        LD A,3AH                        ;PRINT THIS TOO
+        LD A, 0x3A                        ;PRINT THIS TOO
         CALL GETLN                      ;AND GET A LINE
         LD DE,BUFFER                    ;POINTS TO BUFFER
-        RST 18H                         ;EVALUATE INPUT
+        CALL RST18                         ;EVALUATE INPUT
         NOP                             ;CAN BE 'CALL ENDCHK'
         NOP
         NOP
@@ -805,24 +802,24 @@ IP3:
         POP DE                          ;AND OLD TEXT POINTER
 IP4:
         POP AF                          ;PURGE JUNK IN STACK
-        RST 08H                         ;IS NEXT CH. ','?
-        DB ','
-        DB IP5-$-1
+        CALL RST08                         ;IS NEXT CH. ','?
+        .db ','
+        .db IP5-$-1
         JR IP1                          ;YES, MORE ITEMS.
 IP5:
-        RST 30H
+        CALL RST30
 DEFLT:
         LD A,(DE)                       ;***  DEFLT ***
         CP CR                           ;EMPTY LINE IS OK
         JR Z,LT1                        ;ELSE IT IS 'LET'
 LET:
         CALL SETVAL                     ;*** LET ***
-        RST 08H                         ;SET VALUE TO VAR
-        DB ','                          ;---DISASSEMBLE = INC L
-        DB LT1-$-1                      ;---DISASSEMBLE = INC BC
+        CALL RST08                         ;SET VALUE TO VAR
+        .db ','                          ;---DISASSEMBLE = INC L
+        .db LT1-$-1                      ;---DISASSEMBLE = INC BC
         JR LET                          ;ITEM BY ITEM
 LT1:
-        RST 30H                         ;UNTIL FINISH
+        CALL RST30                         ;UNTIL FINISH
 ;*************************************************************
 ;
 ; *** EXPR ***
@@ -894,25 +891,25 @@ XP18:
         EX (SP),HL                      ;1ST <EXPR2> IN HL
         CALL CKHLDE                     ;COMPARE 1ST WITH 2ND
         POP DE                          ;RESTORE TEXT POINTER
-        LD HL,0000H                     ;SET HL=0, A=1
-        LD A,01H
+        LD HL, 0x0000                     ;SET HL=0, A=1
+        LD A, 0x01
         RET
 EXPR2:
-        RST 08H                         ;NEGATIVE SIGN?
-        DB '-'
-        DB XP21-$-1
-        LD HL,0000H                     ;YES, FAKE '0-'
+        CALL RST08                         ;NEGATIVE SIGN?
+        .db '-'
+        .db XP21-$-1
+        LD HL, 0x0000                     ;YES, FAKE '0-'
         JR XP26                         ;TREAT LIKE SUBTRACT
 XP21:
-        RST 08H                         ;POSITIVE SIGN? IGNORE
-        DB '+'
-        DB XP22-$-1
+        CALL RST08                         ;POSITIVE SIGN? IGNORE
+        .db '+'
+        .db XP22-$-1
 XP22:
         CALL EXPR3                      ;1ST <EXPR3>
 XP23:
-        RST 08H                         ;ADD?
-        DB  '+'
-        DB XP25-$-1
+        CALL RST08                         ;ADD?
+        .db  '+'
+        .db XP25-$-1
         PUSH HL                         ;YES, SAVE VALUE
         CALL EXPR3                      ;GET 2ND <EXPR3>
 XP24:
@@ -928,9 +925,9 @@ XP24:
         JP P,XP23                       ;SO IS RESULT
         JP QHOW                         ;ELSE WE HAVE OVERFLOW
 XP25:
-        RST 08H                         ;SUBTRACT?
-        DB '-'
-        DB XP42-$-1
+        CALL RST08                         ;SUBTRACT?
+        .db '-'
+        .db XP42-$-1
 XP26:
         PUSH HL                         ;YES, SAVE 1ST <EXPR3>
         CALL EXPR3                      ;GET 2ND <EXPR3>
@@ -940,12 +937,12 @@ XP26:
 EXPR3:
         CALL EXPR4                      ;GET 1ST <EXPR4>
 XP31:
-        RST 08H                         ;MULTIPLY?
-        DB '*'
-        DB XP34-$-1
+        CALL RST08                         ;MULTIPLY?
+        .db '*'
+        .db XP34-$-1
         PUSH HL                         ;YES, SAVE 1ST
         CALL EXPR4                      ;AND GET 2ND <EXPR4>
-        LD B,00H                        ;CLEAR B FOR SIGN
+        LD B, 0x00                        ;CLEAR B FOR SIGN
         CALL CHKSGN                     ;CHECK SIGN
         EX (SP),HL                      ;1ST IN HL
         CALL CHKSGN                     ;CHECK SIGN OF 1ST
@@ -960,7 +957,7 @@ XP31:
         JP NZ,AHOW                      ;ALSO >, WILL OVERFLOW
 XP32:
         LD A,L                          ;THIS IS DUMB
-        LD HL,0000H                     ;CLEAR RESULT
+        LD HL, 0x0000                     ;CLEAR RESULT
         OR A                            ;ADD AND COUNT
         JR Z,XP35
 XP33:
@@ -970,12 +967,12 @@ XP33:
         JR NZ,XP33
         JR XP35                         ;FINISHED
 XP34:
-        RST 08H                         ;DIVIDE?
-        DB '/'
-        DB XP42-$-1
+        CALL RST08                         ;DIVIDE?
+        .db '/'
+        .db XP42-$-1
         PUSH HL                         ;YES, SAVE 1ST <EXPR4>
         CALL EXPR4                      ;AND GET THE SECOND ONE
-        LD B,00H                        ;CLEAR B FOR SIGN
+        LD B, 0x00                        ;CLEAR B FOR SIGN
         CALL CHKSGN                     ;CHECK SIGN OF 2ND
         EX (SP),HL                      ;GET 1ST IN HL
         CALL CHKSGN                     ;CHECK SIGN OF 1ST
@@ -1003,7 +1000,7 @@ EXPR4:
         LD HL,TAB4-1                    ;FIND FUNCTION IN TAB4
         JP EXEC                         ;AND GO DO IT
 XP40:
-        RST 38H                         ;NO, NOT A FUNCTION
+        CALL RST38                         ;NO, NOT A FUNCTION
         JR C,XP41                       ;NOR A VARIABLE
         LD A,(HL)                       ;VARIABLE
         INC HL
@@ -1016,13 +1013,13 @@ XP41:
         OR A
         RET NZ                          ;OK
 PARN:
-        RST 08H
-        DB '('
-        DB XP43-$-1
-        RST 18H                         ;"(EXPR)"
-        RST 08H
-        DB ')'
-        DB XP43-$-1
+        CALL RST08
+        .db '('
+        .db XP43-$-1
+        CALL RST18                         ;"(EXPR)"
+        CALL RST08
+        .db ')'
+        .db XP43-$-1
 XP42:
         RET
 XP43:
@@ -1038,7 +1035,7 @@ RND:
         PUSH HL
         LD HL,(RANPNT)                  ;GET MEMORY AS RANDOM
         LD DE,LSTROM                    ;NUMBER
-        RST 20H
+        CALL RST20
         JR C,RA1                        ;WRAP AROUND IF LAST
         LD HL,START
 RA1:
@@ -1089,14 +1086,14 @@ SIZE:
 DIVIDE:
         PUSH HL                         ;*** DIVIDE ***
         LD L,H                          ;DIVIDE H BY DE
-        LD H,00H
+        LD H, 0x00
         CALL DV1
         LD B,C                          ;SAVE RESULT IN B
         LD A,L                          ;(REMAINDER+L)/DE
         POP HL
         LD H,A
 DV1:
-        LD C,0FFH                       ;RESULT IN C
+        LD C, 0x0FF                       ;RESULT IN C
 DV2:
         INC C                           ;DUMB ROUTINE
         CALL SUBDE                      ;DIVIDE BY SUBTRACT
@@ -1128,7 +1125,7 @@ CHGSGN:
         XOR H
         JP P,QHOW
         LD A,B                          ;AND ALSO FLIP B
-        XOR 80H
+        XOR 0x80
         LD B,A
         RET
 CKHLDE:
@@ -1137,7 +1134,7 @@ CKHLDE:
         JP P,CK1                        ;NO, XCHANGE AND COMP
         EX DE,HL
 CK1:
-        RST 20H
+        CALL RST20
         RET
 ;*************************************************************
 ;
@@ -1172,13 +1169,13 @@ CK1:
 ;*************************************************************
 
 SETVAL:
-        RST 38H                         ;*** SETVAL ***
+        CALL RST38                         ;*** SETVAL ***
         JP C,QWHAT                      ;"WHAT?" NO VARIABLE
         PUSH HL                         ;SAVE ADDRESS OF VAR.
-        RST 08H                         ;PASS "=" SIGN
-        DB '='
-        DB SV1-$-1
-        RST 18H                         ;EVALUATE EXPR.
+        CALL RST08                         ;PASS "=" SIGN
+        .db '='
+        .db SV1-$-1
+        CALL RST18                         ;EVALUATE EXPR.
         LD B,H                          ;VALUE IS IN BC NOW
         LD C,L
         POP HL                          ;GET ADDRESS
@@ -1189,21 +1186,21 @@ SETVAL:
 SV1:
         JP QWHAT                        ;NO "=" SIGN
 FIN:
-        RST 08H                         ;*** FIN ***
-        DB 3BH
-        DB FI1-$-1
+        CALL RST08                         ;*** FIN ***
+        .db 0x3B
+        .db FI1-$-1
         POP AF                          ;";", PURGE RET. ADDR.
         JP RUNSML                       ;CONTINUE SAME LINE
 FI1:
-        RST 08H                         ;NOT ";", IS IT CR?
-        DB CR
-        DB FI2-$-1
+        CALL RST08                         ;NOT ";", IS IT CR?
+        .db CR
+        .db FI2-$-1
         POP AF                          ;YES, PURGE RET. ADDR.
         JP RUNNXL                       ;RUN NEXT LINE
 FI2:
         RET                             ;ELSE RETURN TO CALLER
 ENDCHK:
-        RST 28H                         ;*** ENDCHK ***
+        CALL RST28                         ;*** ENDCHK ***
         CP CR                           ;END WITH CR?
         RET Z                           ;OK, ELSE SAY: "WHAT?"
 QWHAT:
@@ -1232,8 +1229,8 @@ ERROR_ROUTINE:
         DEC DE                          ;UPTO WHERE THE 0 IS
         POP AF                          ;RESTORE THE CHARACTER
         LD (DE),A
-        LD A,3FH                        ;PRINT A "?"
-        RST 10H
+        LD A, 0x3F                        ;PRINT A "?"
+        CALL RST10
         SUB A                           ;AND THE REST OF THE
         CALL PRTSTG                     ;LINE
         JP RSTART                       ;THEN RESTART
@@ -1271,38 +1268,38 @@ ASORRY:
 ;*************************************************************
 
 GETLN:
-        RST 10H                         ;*** GETLN ***
+        CALL RST10                         ;*** GETLN ***
         LD DE,BUFFER                    ;PROMPT AND INIT.
 GL1:
         CALL CHKIO                      ;CHECK KEYBOARD
         JR Z,GL1                        ;NO INPUT, WAIT
-        CP 7FH                          ;DELETE LAST CHARACTER?
+        CP 0x7F                          ;DELETE LAST CHARACTER?
         JR Z,GL3                        ;YES
-        RST 10H                         ;INPUT, ECHO BACK
-        CP 0AH                          ;IGNORE LF
+        CALL RST10                         ;INPUT, ECHO BACK
+        CP 0x0A                          ;IGNORE LF
         JR Z,GL1
         OR A                            ;IGNORE NULL
         JR Z,GL1
-        CP 7DH                          ;DELETE THE WHOLE LINE?
+        CP 0x7D                          ;DELETE THE WHOLE LINE?
         JR Z,GL4                        ;YES
         LD (DE),A                       ;ELSE SAVE INPUT
         INC DE                          ;AND BUMP POINTER
-        CP 0DH                          ;WAS IT CR
+        CP 0x0D                          ;WAS IT CR
         RET Z                           ;YES, END OF LINE
         LD A,E                          ;ELSE MORE FREE ROOM?
-        CP BUFEND & 0FFH
+        CP BUFEND & 0x0FF
         JR NZ,GL1                       ;YES, GET NEXT INPUT
 GL3:
         LD A,E                          ;DELETE LAST CHARACTER
-        CP BUFFER & 0FFH              ;BUT DO WE HAVE ANY?
+        CP BUFFER & 0x0FF              ;BUT DO WE HAVE ANY?
         JR Z,GL4                        ;NO, REDO WHOLE LINE
         DEC DE                          ;YES, BACKUP POINTER
-        LD A,5CH                        ;AND ECHO A BACK-SLASH
-        RST 10H
+        LD A,0x5C                        ;AND ECHO A BACK-SLASH
+        CALL RST10
         JR GL1                          ;GO GET NEXT INPUT
 GL4:
         CALL CRLF                       ;REDO ENTIRE LINE
-        LD A,05EH                       ;CR, LF AND UP-ARROW
+        LD A, 0x05E                       ;CR, LF AND UP-ARROW
         JR GETLN
 FNDLN:
         LD A,H                          ;*** FNDLN ***
@@ -1314,7 +1311,7 @@ FL1:
         PUSH HL                         ;SAVE LINE #
         LD HL,(TXTUNF)                  ;CHECK IF WE PASSED END
         DEC HL
-        RST 20H
+        CALL RST20
         POP HL                          ;GET LINE # BACK
         RET C                           ;C,NZ PASSED END
         LD A,(DE)                       ;WE DID NOT, GET BYTE 1
@@ -1369,15 +1366,15 @@ PS1:
         INC DE                          ;BUMP POINTER
         CP B                            ;SAME AS OLD A?
         RET Z                           ;YES, RETURN
-        RST 10H                         ;NO, NEXT
+        CALL RST10                         ;NO, NEXT
         CP CR                           ;WAS IT A CR?
         JR NZ,PS1                       ;NO, NEXT
         RET                             ;YES, RETURN
 QTSTG:
-        RST 08H                         ;*** QTSTG ***
-        DB '"'
-        DB QT3-$-1
-        LD A,22H                        ;IT IS A "
+        CALL RST08                         ;*** QTSTG ***
+        .db '"'
+        .db QT3-$-1
+        LD A, 0x22                        ;IT IS A "
 QT1:
         CALL PRTSTG                     ;PRINT UNTIL ANOTHER
         CP CR                           ;WAS LAST ONE A CR?
@@ -1389,32 +1386,32 @@ QT2:
         INC HL
         JP (HL)                         ;RETURN
 QT3:
-        RST 08H                         ;IS IT A '?
-        DB 27H
-        DB QT4-$-1
-        LD A,27H                        ;YES, DO THE SAME
+        CALL RST08                         ;IS IT A '?
+        .db 0x27
+        .db QT4-$-1
+        LD A, 0x27                        ;YES, DO THE SAME
         JR QT1                          ;AS IN "
 QT4:
-        RST 08H                         ;IS IT BACK-ARROW?
-        DB 5FH
-        DB QT5-$-1
-        LD A,8DH                        ;YES, CR WITHOUT LF
-        RST 10H                         ;DO IT TWICE TO GIVE
-        RST 10H                         ;TTY ENOUGH TIME
+        CALL RST08                         ;IS IT BACK-ARROW?
+        .db 0x5F
+        .db QT5-$-1
+        LD A, 0x8D                        ;YES, CR WITHOUT LF
+        CALL RST10                         ;DO IT TWICE TO GIVE
+        CALL RST10                         ;TTY ENOUGH TIME
         POP HL                          ;RETURN ADDRESS
         JR QT2
 QT5:
         RET                             ;NONE OF ABOVE
 ;
 PRTNUM:
-        LD B,00H                        ;*** PRTNUM ***
+        LD B, 0x00                        ;*** PRTNUM ***
         CALL CHKSGN                     ;CHECK SIGN
         JP P,PN1                        ;NO SIGN
         LD B,'-'                        ;B=SIGN
         DEC C                           ;'-' TAKES SPACE
 PN1:
         PUSH DE                         ;SAVE
-        LD DE,000AH                     ;DECIMAL
+        LD DE, 0x000A                     ;DECIMAL
         PUSH DE                         ;SAVE AS FLAG
         DEC C                           ;C=SPACES
         PUSH BC                         ;SAVE SIGN & SPACE
@@ -1436,21 +1433,21 @@ PN4:
         LD A,C                          ;LOOK AT SPACE COUNT
         OR A
         JP M,PN5                        ;NO LEADING BLANKS
-        LD A,20H                        ;LEADING BLANKS
-        RST 10H
+        LD A, 0x20                        ;LEADING BLANKS
+        CALL RST10
         JR PN4                          ;MORE?
 PN5:
         LD A,B                          ;PRINT SIGN
         OR A
-        CALL NZ,0010H
+        CALL NZ, 0x0010
         LD E,L                          ;LAST REMAINDER IN E
 PN6:
         LD A,E                          ;CHECK DIGIT IN E
-        CP 0AH                          ;10 IS FLAG FOR NO MORE
+        CP 0x0A                          ;10 IS FLAG FOR NO MORE
         POP DE
         RET Z                           ;IF SO, RETURN
-        ADD A,30H                       ;ELSE, CONVERT TO ASCII
-        RST 10H                         ;PRINT THE DIGIT
+        ADD A, 0x30                       ;ELSE, CONVERT TO ASCII
+        CALL RST10                         ;PRINT THE DIGIT
         JR PN6                          ;GO BACK FOR MORE
 PRTLN:
         LD A,(DE)                       ;*** PRTLN ***
@@ -1459,10 +1456,10 @@ PRTLN:
         LD A,(DE)                       ;HIGH ORDER
         LD H,A
         INC DE
-        LD C,04H                        ;PRINT 4 DIGIT LINE #
+        LD C, 0x04                        ;PRINT 4 DIGIT LINE #
         CALL PRTNUM
-        LD A,20H                        ;FOLLOWED BY A BLANK
-        RST 10H
+        LD A, 0x20                        ;FOLLOWED BY A BLANK
+        CALL RST10
         SUB A                           ;AND THEN THE NEXT
         CALL PRTSTG
         RET
@@ -1484,7 +1481,7 @@ PRTLN:
 ;*************************************************************
 
 MVUP:
-        RST 20H                         ;*** MVUP ***
+        CALL RST20                         ;*** MVUP ***
         RET Z                           ;DE = HL, RETURN
         LD A,(DE)                       ;GET ONE BYTE
         LD (BC),A                       ;MOVE IT
@@ -1569,7 +1566,7 @@ PU1:
 
 INIT:
         CALL SERIAL_INIT                ;INITIALIZE THE SIO
-        LD D,19H
+        LD D, 0x19
 PATLOP:
         CALL CRLF
         DEC D
@@ -1589,13 +1586,11 @@ OUTC:
         POP AF                          ;IT IS OFF
         RET                             ;RESTORE AF AND RETURN
 OUTC2:
-        CALL TX_RDY                     ;SEE IF TRANSMIT IS AVAILABLE
-        POP AF                          ;RESTORE THE REGISTER
-        OUT (SerialPort),A              ;SEND THE BYTE
+        CALL TX_RDY
         CP CR
         RET NZ
         LD A,LF
-        RST 10H
+        CALL RST10
         LD A,CR
         RET
 CHKIO:
@@ -1605,30 +1600,30 @@ CHKIO:
         PUSH BC                         ;IF IT'S A LF, IGNORE AND RETURN
         LD B,A                          ; AS IF THERE WAS NO CHARACTER.
         SUB LF
-        JR Z,CHKIO2
+        JR Z, CHKIO2
         LD A,B                          ;OTHERWISE RESTORE 'A' AND 'BC'
         POP BC                          ; AND CONTINUE ON.
 
-        CP 0FH                          ;IS IT CONTROL-0?
+        CP 0x0F                          ;IS IT CONTROL-0?
         JR NZ,CI1                       ;NO, MORE CHECKING
         LD A,(OCSW)                     ;CONTROL-0 FLIPS OCSW
         CPL                             ;ON TO OFF, OFF TO ON
         LD (OCSW),A
         JR CHKIO                        ;GET ANOTHER INPUT
 CHKIO2:
-        LD A,00H                        ;CLEAR A
+        LD A, 0x00                        ;CLEAR A
         OR A                            ;ZET THE Z-FLAG
         POP BC                          ;RESTORE THE 'BC' PAIR
         RET                             ;RETURN WITH 'Z' SET.
 CI1:
-        CP 03H                          ;IS IT CONTROL-C?
+        CP 0x03                          ;IS IT CONTROL-C?
         RET NZ                          ;NO, RETURN "NZ"
         JP RSTART                       ;YES, RESTART TBI
 
 
-MSG1:   DB   ESC,"[2J",ESC,"[H"                 ;SCREEN CLEAR
-        DB   'Z80 TINY BASIC 2.0g',CR           ;BOOT MESSAGE
-MSG2:   DB   'PORTED BY DOUG GABBARD, 2017',CR
+MSG1:   .db   ESC,'[','2','J',ESC,[','H'                 ;SCREEN CLEAR
+        .db   'Z','8','0',' ','T','I','N','Y',' ','B','A','S','I','C',' ','2','.','0','g',CR           ;BOOT MESSAGE
+MSG2:   .db   'P','O','R','T','E','D',' ','B','Y',' ','A','G','U','S','T','I','N',' ','G','I','M','E','N','E','Z',',',' ','2','0','1','9',CR
 
 ;*************************************************************
 ;
@@ -1658,103 +1653,121 @@ MSG2:   DB   'PORTED BY DOUG GABBARD, 2017',CR
 ;*************************************************************
 
 TAB1:                                   ;DIRECT COMMANDS
-        DB 'LIST'
-        DWA _LIST
-        DB 'RUN'
-        DWA RUN
-        DB 'NEW'
-        DWA NEW
+        .db 'LIST'
+        .dw _LIST + 0x8000
+        .db 'RUN'
+        .dw RUN + 0x8000
+        .db 'NEW'
+        .dw NEW + 0x8000
 TAB2:                                   ;DIRECT/STATEMENT
-        DB 'NEXT'
-        DWA NEXT
-        DB 'LET'
-        DWA LET
-        DB 'IF'
-        DWA IFF
-        DB 'GOTO'
-        DWA GOTO
-        DB 'GOSUB'
-        DWA GOSUB
-        DB 'RETURN'
-        DWA RETURN
-        DB 'REM'
-        DWA REM
-        DB 'FOR'
-        DWA FOR
-        DB 'INPUT'
-        DWA INPUT
-        DB 'PRINT'
-        DWA _PRINT
-        DB 'STOP'
-        DWA STOP
-        DWA DEFLT
+        .db 'NEXT'
+        .dw NEXT + 0x8000
+        .db 'LET'
+        .dw LET + 0x8000
+        .db 'IF'
+        .dw IFF + 0x8000
+        .db 'GOTO'
+        .dw GOTO + 0x8000
+        .db 'GOSUB'
+        .dw GOSUB + 0x8000
+        .db 'RETURN'
+        .dw RETURN + 0x8000
+        .db 'REM'
+        .dw REM + 0x8000
+        .db 'FOR'
+        .dw FOR + 0x8000
+        .db 'INPUT'
+        .dw INPUT + 0x8000
+        .db 'PRINT'
+        .dw _PRINT + 0x8000
+        .db 'STOP'
+        .dw STOP + 0x8000
+        .dw DEFLT + 0x8000               ;A bit confused about this, need to test, not sure if ZASM workaround is applied correctly
 TAB4:                                   ;FUNCTIONS
-        DB 'RND'
-        DWA RND
-        DB 'ABS'
-        DWA ABS
-        DB 'SIZE'
-        DWA SIZE
-        DWA XP40
+        .db 'RND'
+        .dw RND + 0x8000
+        .db 'ABS'
+        .dw ABS + 0x8000
+        .db 'SIZE'
+        .dw SIZE + 0x8000
+        .dw XP40 + 0x8000               ;A bit confused about this, need to test, not sure if ZASM workaround is applied correctly
 TAB5:                                   ;"TO" IN "FOR"
-        DB 'TO'
-        DWA FR1
-        DWA QWHAT
+        .db 'TO'
+        .dw FR1 + 0x8000
+        .dw QWHAT + 0x8000              ;A bit confused about this, need to test, not sure if ZASM workaround is applied correctly
 TAB6:                                   ;"STEP" IN "FOR"
-        DB 'STEP'
-        DWA FR2
-        DWA FR3
+        .db 'STEP'
+        .dw FR2 + 0x8000
+        .dw FR3 + 0x8000                ;A bit confused about this, need to test, not sure if ZASM workaround is applied correctly
 TAB8:                                   ;RELATION OPERATORS
-        DB '>='
-        DWA XP11
-        DB '#'
-        DWA XP12
-        DB '>'
-        DWA XP13
-        DB '='
-        DWA XP15
-        DB '<='
-        DWA XP14
-        DB '<'
-        DWA XP16
-        DWA XP17
-DIRECT: LD HL,TAB1-1                   ;*** DIRECT ***
+        .db '>='
+        .dw XP11 + 0x8000
+        .db '#'
+        .dw XP12 + 0x8000
+        .db '>'
+        .dw XP13 + 0x8000
+        .db '='
+        .dw XP15 + 0x8000
+        .db '<='
+        .dw XP14 + 0x8000
+        .db '<'
+        .dw XP16 + 0x8000
+        .dw XP17 + 0x8000               ;A bit confused about this, need to test, not sure if ZASM workaround is applied correctly
+DIRECT: LD HL,TAB1-1                    ;*** DIRECT ***
 EXEC:                                   ;*** EXEC ***
-EX0:    RST 28H                         ;IGNORE LEADING BLANKS
+EX0:    CALL RST28                         ;IGNORE LEADING BLANKS
         PUSH DE                         ;SAVE POINTER
 EX1:
         LD A,(DE)                       ;IF FOUND '.' IN STRING
         INC DE                          ;BEFORE ANY MISMATCH
-        CP 23H                          ;WE DECLARE A MATCH
+        CP 0x23                          ;WE DECLARE A MATCH
         JR Z,EX3
         INC HL                          ;HL->TABLE
         CP (HL)                         ;IF MATCH, TEST NEXT
+
         JR Z,EX1
-        LD A,7FH                        ;ELSE SEE IF BIT 7
+        LD A,0x7F                        ;ELSE SEE IF BIT 7
         DEC DE                          ;OF TABLE IS SET, WHICH
+
+        PUSH HL                         ;WORKAROUND FOR ZASM
+        INC HL                          ;WORKAROUND FOR ZASM
         CP (HL)                         ;IS THE JUMP ADDR. (HI)
+        POP HL                          ;WORKAROUND FOR ZASM
         JR C,EX5                        ;C:YES, MATCHED
 EX2:
         INC HL                          ;NC:NO, FIND JUMP ADDR.
+        PUSH HL                         ;WORKAROUND FOR ZASM
+        INC HL                          ;WORKAROUND FOR ZASM
         CP (HL)
+        POP HL                          ;WORKAROUND FOR ZASM
         JR NC,EX2
         INC HL                          ;BUMP TO NEXT TAB. ITEM
         POP DE                          ;RESTORE STRING POINTER
         JR EX0                          ;TEST AGAINST NEXT ITEM
 EX3:
-        LD A,7FH                        ;PARTIAL MATCH, FIND
+        LD A, 0x7F                        ;PARTIAL MATCH, FIND
 EX4:
         INC HL                          ;JUMP ADDR., WHICH IS
+        PUSH HL                         ;WORKAROUND FOR ZASM
+        INC HL                          ;WORKAROUND FOR ZASM
         CP (HL)                         ;FLAGGED BY BIT 7
+        POP HL                          ;WORKAROUND FOR ZASM
         JR NC,EX4
 EX5:
-        LD A,(HL)                       ;LOAD HL WITH THE JUMP
+
+        PUSH BC                         ;STORE BC (WE NEED B FOR ZASM WORKAROUND)
+
+        LD B, (HL)                      ;LOAD HL WITH THE JUMP
         INC HL                          ;ADDRESS FROM THE TABLE
-        LD L,(HL)
-        AND 7FH                         ;MASK OFF BIT 7
-        LD H,A
+        LD A, (HL)                      ;MODIFIED TO AVOID BYTE SWAP (ZASM WORKAROUND)
+        AND 0x7F
+        LD H, A
+        LD L, B
+
+        POP BC                          ;CLEAN UP THE GABAGE
         POP AF                          ;CLEAN UP THE GABAGE
         JP (HL)                         ;AND WE GO DO IT
+
 ;-------------------------------------------------------------------------------
 ;///////////////////////////////////////////////////////////////////////////////
 ;-------------------------------------------------------------------------------
@@ -1765,32 +1778,16 @@ SERIAL_INIT:
         ; This routine is for initializing your serial port.
         
         
-                LD      A, 10000000b                                            ;Change registers to BRG
-                OUT (UART_CONTROL), A                                   
-                LD      A, HIGH(BRG_DIVIDER)                            ;Load divider into brg, 115.000bps at 50Mhz, 1,5% error
-                OUT (BRG_H), A                                          
-                LD      A, LOW(BRG_DIVIDER)
-                OUT (BRG_L), A
-                LD      A, UART_CONFIG                                          ;Change registers to UART and configure as 8N1
-                OUT (UART_CONTROL), A                   
-                LD      A, 0                                                            ;Disable interrupts and work in poll mode
-                OUT (UART_INT), A                                               
-                LD  A, UZI_UART
-                OUT (UZI_CONTROL), A                                    ;Enable UART on the UZI module
                 
         RET
 ;-------------------------------------------------------------------------------
 TX_RDY:
 
-        ; This routine is checking if the Serial Port is ready to send
-        ; a character.
+        ; This routine sends a character stored in A 
         
-        IN A, (C5h)
-        BIT 5, A
-        
-        RET Z
-        
-        JP TX_RDY
+        POP AF                          ;RESTORE THE REGISTER, A HOLDS THE CHAR TO BE SENT
+
+        RET
         
 ;-------------------------------------------------------------------------------
 RX_RDY:
@@ -1801,29 +1798,19 @@ RX_RDY:
         ; However, if a character is not available, it returns with the
         ; Z-flag set.
 
-                IN A, (UART_STATUS)
-                BIT 1, A
-                JR Z, RECEIVE_BYTE
-                LD A, 1
-                NEG
-                RET
-                
-RECEIVE_BYTE:
-                
-                LD A, 0
-                NEG
-                IN A, (SerialPort)
+
         RET
+
 ;-------------------------------------------------------------------------------
 ;///////////////////////////////////////////////////////////////////////////////
 ;-------------------------------------------------------------------------------
 
 LSTROM:                                 ;ALL ABOVE CAN BE ROM
                                         ;HERE DOWN MUST BE RAM
-        ORG  08000H
-        ORG  0FF00H
-VARBGN: DS   55                         ;VARIABLE @(0)
-BUFFER: DS   64                         ;INPUT BUFFER
-BUFEND: DS   1                          ;BUFFER ENDS
-STKLMT: DS   1                          ;TOP LIMIT FOR STACK
+        ORG  0x08000
+        ORG  0x0FF00
+VARBGN: .fill   55                         ;VARIABLE @(0)
+BUFFER: .fill   64                         ;INPUT BUFFER
+BUFEND: .fill   1                          ;BUFFER ENDS
+STKLMT: .fill   1                          ;TOP LIMIT FOR STACK
         END
